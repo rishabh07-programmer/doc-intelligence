@@ -111,14 +111,40 @@
     opacity: 0.92;
   }
 
-  #loading-text {
+  #loading-block {
     display: none;
     width: 100%;
-    margin-top: 20px;
-    padding: 14px;
+    margin-top: 32px;
+    padding: 24px 0;
     text-align: center;
+  }
+
+  #loading-phrase {
+    font-family: 'Inter', sans-serif;
     font-size: 15px;
-    color: #6b6b6b;
+    color: var(--text);
+    margin-bottom: 24px;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  }
+
+  #loading-phrase.fade {
+    opacity: 0;
+  }
+
+  .progress-track {
+    width: 240px;
+    height: 2px;
+    margin: 0 auto;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
   }
 
   .api-error {
@@ -323,7 +349,12 @@
   <div class="upload-error" id="upload-error"></div>
 
   <button id="analyze-btn">Analyze Document</button>
-  <div id="loading-text">Analyzing document...</div>
+  <div id="loading-block">
+    <div id="loading-phrase"></div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
 
   <div class="api-error" id="api-error"></div>
 
@@ -349,7 +380,54 @@
   const filenameEl = document.getElementById('filename');
   const uploadError = document.getElementById('upload-error');
   const analyzeBtn = document.getElementById('analyze-btn');
-  const loadingText = document.getElementById('loading-text');
+  const loadingBlock = document.getElementById('loading-block');
+  const loadingPhrase = document.getElementById('loading-phrase');
+  const progressFill = document.getElementById('progress-fill');
+
+  const LOADING_PHRASES = [
+    'Reading document...',
+    'Extracting structure...',
+    'Identifying risks...',
+    'Generating analysis...'
+  ];
+  let loadingPhraseIndex = 0;
+  let loadingInterval = null;
+  let loadingFadeTimeout = null;
+
+  function startLoadingAnimation() {
+    loadingPhraseIndex = 0;
+    loadingPhrase.textContent = LOADING_PHRASES[0];
+    loadingPhrase.classList.remove('fade');
+
+    loadingInterval = setInterval(() => {
+      loadingPhrase.classList.add('fade');
+      loadingFadeTimeout = setTimeout(() => {
+        loadingPhraseIndex = (loadingPhraseIndex + 1) % LOADING_PHRASES.length;
+        loadingPhrase.textContent = LOADING_PHRASES[loadingPhraseIndex];
+        loadingPhrase.classList.remove('fade');
+      }, 300);
+    }, 1800);
+
+    progressFill.style.transition = 'none';
+    progressFill.style.width = '0%';
+    void progressFill.offsetWidth;
+    progressFill.style.transition = 'width 7s linear';
+    progressFill.style.width = '85%';
+  }
+
+  function stopLoadingAnimation() {
+    if (loadingInterval) {
+      clearInterval(loadingInterval);
+      loadingInterval = null;
+    }
+    if (loadingFadeTimeout) {
+      clearTimeout(loadingFadeTimeout);
+      loadingFadeTimeout = null;
+    }
+    loadingBlock.style.display = 'none';
+    progressFill.style.transition = 'none';
+    progressFill.style.width = '0%';
+  }
   const apiError = document.getElementById('api-error');
   const results = document.getElementById('results');
   const extractionContent = document.getElementById('extraction-content');
@@ -419,7 +497,8 @@
     apiError.style.display = 'none';
     results.classList.remove('show');
     analyzeBtn.style.display = 'none';
-    loadingText.style.display = 'block';
+    loadingBlock.style.display = 'block';
+    startLoadingAnimation();
 
     const formData = new FormData();
     formData.append('file', selectedFile);
@@ -430,11 +509,11 @@
         body: formData
       });
       const data = await response.json();
-      loadingText.style.display = 'none';
+      stopLoadingAnimation();
       analyzeBtn.style.display = 'block';
       renderResults(data);
     } catch (e) {
-      loadingText.style.display = 'none';
+      stopLoadingAnimation();
       analyzeBtn.style.display = 'block';
       showApiError('Request failed: ' + e.message);
     }
