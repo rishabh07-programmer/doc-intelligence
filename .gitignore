@@ -1,0 +1,4 @@
+start.ps1
+__pycache__/
+*.pyc
+.env
