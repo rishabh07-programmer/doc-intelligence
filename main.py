@@ -1,6 +1,7 @@
 import json
 import os
 
+import anthropic
 from fastapi import FastAPI, File, UploadFile
 from google import genai
 from google.genai import types
@@ -39,6 +40,39 @@ def extract_with_gemini(pdf_bytes: bytes) -> dict:
     return json.loads(text.strip())
 
 
+RISK_SYSTEM_PROMPT = "You are a legal and business risk analyst. Analyze documents and identify risks clearly."
+
+
+def analyze_risks(extracted_data: dict) -> dict:
+    try:
+        client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        user_prompt = f"""Based on this extracted document data, identify risks and return ONLY valid JSON with no markdown:
+{{
+  'risk_flags': [
+    {{'title': '...', 'severity': 'high | medium | low', 'explanation': '...'}}
+  ],
+  'overall_risk_level': 'high | medium | low',
+  'recommendations': ['...', '...'],
+  'analyst_summary': 'Two to three sentence plain English summary of the main risks.'
+}}
+Document data: {json.dumps(extracted_data)}"""
+
+        response = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=1024,
+            system=RISK_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        text = response.content[0].text.strip()
+        if text.startswith("```"):
+            lines = text.split("\n")
+            lines = [l for l in lines if not l.strip().startswith("```")]
+            text = "\n".join(lines).strip()
+        return json.loads(text)
+    except Exception as e:
+        return {"error": "risk analysis failed", "detail": str(e)}
+
+
 @app.get("/")
 def health():
     return {"status": "alive", "app": "doc-intelligence v1"}
@@ -55,8 +89,10 @@ async def analyze(file: UploadFile = File(...)):
         return {"error": "file too large", "detail": "File exceeds the 10MB upload limit"}
 
     try:
-        result = extract_with_gemini(pdf_bytes)
+        extraction = extract_with_gemini(pdf_bytes)
     except Exception as e:
         return {"error": "extraction failed", "detail": str(e)}
 
-    return result
+    analysis = analyze_risks(extraction)
+
+    return {"extraction": extraction, "analysis": analysis}
