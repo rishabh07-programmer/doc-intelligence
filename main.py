@@ -3,10 +3,13 @@ import os
 
 import anthropic
 from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from google import genai
 from google.genai import types
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
@@ -75,7 +78,7 @@ Document data: {json.dumps(extracted_data)}"""
 
 @app.get("/")
 def health():
-    return {"status": "alive", "app": "doc-intelligence v1"}
+    return FileResponse("static/index.html")
 
 
 @app.post("/analyze")

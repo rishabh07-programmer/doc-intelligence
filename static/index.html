@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocIntel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf9f6;
+    --text: #1a1a2e;
+    --accent: #166534;
+    --border: #e8e4dc;
+    --risk-high: #dc2626;
+    --risk-medium: #d97706;
+    --risk-low: #166534;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+  }
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  header {
+    margin-bottom: 40px;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 28px;
+    color: var(--accent);
+    margin: 0 0 6px 0;
+  }
+
+  header p {
+    margin: 0;
+    color: #6b6b6b;
+    font-size: 15px;
+  }
+
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+
+  .upload-zone:hover,
+  .upload-zone.dragover {
+    border-color: var(--accent);
+  }
+
+  .upload-zone p {
+    margin: 0;
+    font-size: 15px;
+    color: #6b6b6b;
+  }
+
+  .upload-zone .filename {
+    margin-top: 10px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  #file-input {
+    display: none;
+  }
+
+  .upload-error {
+    display: none;
+    margin-top: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--risk-high);
+    border-radius: 6px;
+    color: var(--risk-high);
+    font-size: 14px;
+  }
+
+  #analyze-btn {
+    display: none;
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  #analyze-btn:hover {
+    opacity: 0.92;
+  }
+
+  #loading-text {
+    display: none;
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    text-align: center;
+    font-size: 15px;
+    color: #6b6b6b;
+  }
+
+  .api-error {
+    display: none;
+    margin-top: 24px;
+    padding: 16px 20px;
+    border: 1px solid var(--risk-high);
+    border-radius: 6px;
+    color: var(--risk-high);
+    font-size: 14px;
+  }
+
+  #results {
+    display: none;
+    margin-top: 40px;
+    gap: 40px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (min-width: 768px) {
+    #results {
+      display: grid;
+    }
+  }
+
+  #results.show {
+    display: block;
+  }
+
+  @media (min-width: 768px) {
+    #results.show {
+      display: grid;
+    }
+  }
+
+  .col h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 20px;
+    margin: 0 0 20px 0;
+  }
+
+  .field-block {
+    margin-bottom: 24px;
+  }
+
+  .field-block h3 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b6b6b;
+    margin: 0 0 10px 0;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+  }
+
+  .badge.doc-type {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .badge.risk-high { border-color: var(--risk-high); color: var(--risk-high); }
+  .badge.risk-medium { border-color: var(--risk-medium); color: var(--risk-medium); }
+  .badge.risk-low { border-color: var(--risk-low); color: var(--risk-low); }
+
+  ul.plain-list {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .kv-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .kv-row:last-child {
+    border-bottom: none;
+  }
+
+  .kv-row .label {
+    color: #6b6b6b;
+  }
+
+  .accordion-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+
+  .accordion-title {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .accordion-summary {
+    display: none;
+    padding: 0 16px 14px 16px;
+    font-size: 14px;
+    color: #444;
+    line-height: 1.6;
+  }
+
+  .accordion-item.open .accordion-summary {
+    display: block;
+  }
+
+  #download-json {
+    margin-top: 8px;
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  #download-json:hover {
+    background: rgba(22, 101, 52, 0.06);
+  }
+
+  .analyst-summary {
+    font-size: 15px;
+    line-height: 1.7;
+    margin: 0 0 16px 0;
+  }
+
+  .risk-strip {
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+
+  .risk-strip.high { border-left-color: var(--risk-high); }
+  .risk-strip.medium { border-left-color: var(--risk-medium); }
+  .risk-strip.low { border-left-color: var(--risk-low); }
+
+  .risk-strip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .risk-strip-title {
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  .risk-strip-explanation {
+    font-size: 14px;
+    color: #444;
+    line-height: 1.6;
+  }
+
+  ol.recommendations {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .empty-note {
+    font-size: 13px;
+    color: #999;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>DocIntel</h1>
+    <p>AI-powered document risk analysis</p>
+  </header>
+
+  <div class="upload-zone" id="upload-zone">
+    <p id="upload-text">Drop a PDF or click to upload</p>
+    <div class="filename" id="filename" style="display:none;"></div>
+    <input type="file" id="file-input" accept="application/pdf">
+  </div>
+
+  <div class="upload-error" id="upload-error"></div>
+
+  <button id="analyze-btn">Analyze Document</button>
+  <div id="loading-text">Analyzing document...</div>
+
+  <div class="api-error" id="api-error"></div>
+
+  <div id="results">
+    <div class="col" id="col-extraction">
+      <h2>Extracted Data</h2>
+      <div id="extraction-content"></div>
+      <button id="download-json">Download JSON</button>
+    </div>
+    <div class="col" id="col-analysis">
+      <h2>Risk Analysis</h2>
+      <div id="analysis-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const MAX_SIZE = 10 * 1024 * 1024;
+
+  const uploadZone = document.getElementById('upload-zone');
+  const fileInput = document.getElementById('file-input');
+  const uploadText = document.getElementById('upload-text');
+  const filenameEl = document.getElementById('filename');
+  const uploadError = document.getElementById('upload-error');
+  const analyzeBtn = document.getElementById('analyze-btn');
+  const loadingText = document.getElementById('loading-text');
+  const apiError = document.getElementById('api-error');
+  const results = document.getElementById('results');
+  const extractionContent = document.getElementById('extraction-content');
+  const analysisContent = document.getElementById('analysis-content');
+  const downloadBtn = document.getElementById('download-json');
+
+  let selectedFile = null;
+  let lastResponse = null;
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+
+  uploadZone.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+  });
+
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      handleFile(fileInput.files[0]);
+    }
+  });
+
+  function handleFile(file) {
+    uploadError.style.display = 'none';
+    analyzeBtn.style.display = 'none';
+    selectedFile = null;
+
+    if (file.type !== 'application/pdf') {
+      showUploadError('Only PDF files are accepted.');
+      return;
+    }
+
+    if (file.size > MAX_SIZE) {
+      showUploadError('File exceeds the 10MB upload limit.');
+      return;
+    }
+
+    selectedFile = file;
+    uploadText.style.display = 'none';
+    filenameEl.style.display = 'block';
+    filenameEl.textContent = file.name;
+    analyzeBtn.style.display = 'block';
+  }
+
+  function showUploadError(message) {
+    uploadError.textContent = message;
+    uploadError.style.display = 'block';
+    uploadText.style.display = 'block';
+    filenameEl.style.display = 'none';
+  }
+
+  analyzeBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    apiError.style.display = 'none';
+    results.classList.remove('show');
+    analyzeBtn.style.display = 'none';
+    loadingText.style.display = 'block';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const response = await fetch('/analyze', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      loadingText.style.display = 'none';
+      analyzeBtn.style.display = 'block';
+      renderResults(data);
+    } catch (e) {
+      loadingText.style.display = 'none';
+      analyzeBtn.style.display = 'block';
+      showApiError('Request failed: ' + e.message);
+    }
+  });
+
+  function showApiError(message) {
+    apiError.textContent = message;
+    apiError.style.display = 'block';
+  }
+
+  function riskClass(severity) {
+    if (!severity) return '';
+    const s = severity.toLowerCase();
+    if (s === 'high') return 'high';
+    if (s === 'medium') return 'medium';
+    if (s === 'low') return 'low';
+    return '';
+  }
+
+  function renderResults(data) {
+    lastResponse = data;
+
+    if (data.error) {
+      showApiError(data.detail ? `${data.error}: ${data.detail}` : data.error);
+      return;
+    }
+
+    const extraction = data.extraction;
+    const analysis = data.analysis;
+
+    if (extraction && extraction.error) {
+      showApiError(extraction.detail ? `${extraction.error}: ${extraction.detail}` : extraction.error);
+      return;
+    }
+
+    extractionContent.innerHTML = renderExtraction(extraction);
+    analysisContent.innerHTML = renderAnalysis(analysis);
+
+    results.classList.add('show');
+
+    document.querySelectorAll('.accordion-title').forEach(el => {
+      el.addEventListener('click', () => {
+        el.parentElement.classList.toggle('open');
+      });
+    });
+  }
+
+  function renderExtraction(extraction) {
+    if (!extraction) {
+      return '<p class="empty-note">No extraction data available.</p>';
+    }
+
+    let html = '';
+
+    html += `<div class="field-block">
+      <h3>Document Type</h3>
+      <span class="badge doc-type">${escapeHtml(extraction.document_type || 'unknown')}</span>
+    </div>`;
+
+    if (extraction.parties && extraction.parties.length > 0) {
+      html += `<div class="field-block">
+        <h3>Parties</h3>
+        <ul class="plain-list">${extraction.parties.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
+      </div>`;
+    }
+
+    if (extraction.dates) {
+      const rows = Object.entries(extraction.dates)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `<div class="kv-row"><span class="label">${escapeHtml(labelize(k))}</span><span>${escapeHtml(v)}</span></div>`)
+        .join('');
+      if (rows) {
+        html += `<div class="field-block"><h3>Dates</h3>${rows}</div>`;
+      }
+    }
+
+    if (extraction.key_amounts && extraction.key_amounts.length > 0) {
+      const rows = extraction.key_amounts
+        .map(a => `<div class="kv-row"><span class="label">${escapeHtml(a.label || '')}</span><span>${escapeHtml(a.amount || '')}</span></div>`)
+        .join('');
+      html += `<div class="field-block"><h3>Key Amounts</h3>${rows}</div>`;
+    }
+
+    if (extraction.key_clauses && extraction.key_clauses.length > 0) {
+      const items = extraction.key_clauses.map(c => `
+        <div class="accordion-item">
+          <div class="accordion-title"><span>${escapeHtml(c.title || 'Clause')}</span><span>+</span></div>
+          <div class="accordion-summary">${escapeHtml(c.summary || '')}</div>
+        </div>
+      `).join('');
+      html += `<div class="field-block"><h3>Key Clauses</h3>${items}</div>`;
+    }
+
+    return html;
+  }
+
+  function renderAnalysis(analysis) {
+    if (!analysis) {
+      return '<p class="empty-note">No risk analysis available.</p>';
+    }
+
+    if (analysis.error) {
+      return `<p class="empty-note">${escapeHtml(analysis.detail ? `${analysis.error}: ${analysis.detail}` : analysis.error)}</p>`;
+    }
+
+    let html = '';
+
+    if (analysis.analyst_summary) {
+      html += `<p class="analyst-summary">${escapeHtml(analysis.analyst_summary)}</p>`;
+    }
+
+    if (analysis.overall_risk_level) {
+      html += `<div class="field-block">
+        <span class="badge risk-${riskClass(analysis.overall_risk_level)}">Overall Risk: ${escapeHtml(analysis.overall_risk_level)}</span>
+      </div>`;
+    }
+
+    if (analysis.risk_flags && analysis.risk_flags.length > 0) {
+      const strips = analysis.risk_flags.map(flag => `
+        <div class="risk-strip ${riskClass(flag.severity)}">
+          <div class="risk-strip-header">
+            <span class="risk-strip-title">${escapeHtml(flag.title || '')}</span>
+            <span class="badge risk-${riskClass(flag.severity)}">${escapeHtml(flag.severity || '')}</span>
+          </div>
+          <div class="risk-strip-explanation">${escapeHtml(flag.explanation || '')}</div>
+        </div>
+      `).join('');
+      html += `<div class="field-block">${strips}</div>`;
+    }
+
+    if (analysis.recommendations && analysis.recommendations.length > 0) {
+      const items = analysis.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+      html += `<div class="field-block"><h3>Recommendations</h3><ol class="recommendations">${items}</ol></div>`;
+    }
+
+    return html;
+  }
+
+  function labelize(key) {
+    return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(value);
+    return div.innerHTML;
+  }
+
+  downloadBtn.addEventListener('click', () => {
+    if (!lastResponse) return;
+    const blob = new Blob([JSON.stringify(lastResponse, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analysis-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+</script>
+</body>
+</html>
