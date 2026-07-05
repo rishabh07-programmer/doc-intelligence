@@ -33,9 +33,9 @@ def extract_with_gemini(pdf_bytes: bytes) -> dict:
     )
     text = response.text.strip()
     if text.startswith("```"):
-        text = text.strip("`")
-        if text.startswith("json"):
-            text = text[4:]
+        lines = text.split("\n")
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        text = "\n".join(lines).strip()
     return json.loads(text.strip())
 
 
